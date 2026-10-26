@@ -1,0 +1,243 @@
+{
+  "_comment": "数据来源：本人一方的客户端轮换日志，已脱敏（仅日期/事件计数/状态码；账号标识、内部路由、请求内容、密钥均未收录）。",
+  "_schema": {
+    "meta": "必填：title / tagline / intro / owner_repo",
+    "sections[].items[]": "必填：name / url / what；可选：tags[]",
+    "verification_sources[]": "必填：name / url / expected_token —— verify_sources.py 会**真的去抓**这些 URL 并断言 token 在正文里"
+  },
+  "updated": "2026-10-27",
+  "meta": {
+    "title": "AI 中转站失效档案",
+    "tagline": "中转站是怎么坏的：402 / 403 / 500 的实际形态、占比与自愈路径 —— 58 天自有调用日志的脱敏统计",
+    "intro": "市面上的中转站测评几乎只写「稳不稳」「快不快」。这篇只回答另一个问题：**当它不稳的时候，具体坏成什么样？**\n\n数据来自本人一方在 2026-08-06 ~ 2026-10-27 期间的客户端轮换日志，脱敏后只保留日期、事件计数与状态码。样本期覆盖 58 个有事件的日子，累计记录上游拒绝 7,503 次、账号池枯竭 14,205 次。\n\n⚠️ **先读这条边界**：这些数字反映的是**本人一方的调用强度**，不是站点全体用户的稳定性。请求量下降会直接让失效计数下降 —— 2026-10-06 前后账号池规模不变（同为 27），但日均枯竭从 400+ 降到个位数，原因是当时调用量下降，不是站点变好了。所以这篇讲的是**失效形态**，不是**站点评测排名**。",
+    "owner_repo": "cw11ark/relay-outage-log",
+    "disclaimer": "Failure-mode notes from one user's own call logs, de-identified (dates / event counts / status codes only). Reflects one caller's load, not site-wide reliability rankings."
+  },
+  "sections": [
+    {
+      "title": "四种失效形态",
+      "icon": "🔍",
+      "description": "同一套调用链上，上游拒绝一共出现过四种形态。按日志中出现的次数排序：",
+      "items": [
+        {
+          "name": "402 · 额度枯竭",
+          "url": "https://agentrouter.org/api/status",
+          "what": "5,192 次，占全部上游拒绝的约 69%。含义是「这个账号的额度用完了」——不是站点宕机。典型表现：同一个 key 连续失败，换一个 key 立刻成功。属于**可自愈**的一类，前提是你有第二个可用额度来源。",
+          "tags": [
+            "402",
+            "quota",
+            "可自愈"
+          ]
+        },
+        {
+          "name": "500 · 上游错误",
+          "url": "https://agentrouter.org/docs/index.html",
+          "what": "1,335 次，占约 18%。含义是请求确实打到了上游但上游报错。**换出口 IP 修不好**，只能换站或等上游恢复。日志里这类事件往往紧跟着连续失败 —— 同一时间窗内多次 500 意味着上游在抖，不是网络问题。",
+          "tags": [
+            "500",
+            "upstream",
+            "不可自愈"
+          ]
+        },
+        {
+          "name": "403 · 账号级封禁",
+          "url": "https://vsllm.cc/api/status",
+          "what": "963 次，占约 13%。与 402 的区别在于**换号也没用** —— 是账号本身被限制（如余额为负、签到关闭、账号被封）。日志中的归因是「insufficient balance」一类，属于**需人工介入**：充钱、换 key 或换站，没有等一下就会好的。",
+          "tags": [
+            "403",
+            "banned",
+            "需人工"
+          ]
+        },
+        {
+          "name": "401 · 凭据失效",
+          "url": "https://github.com/QuantumNous/new-api",
+          "what": "仅 13 次，占比不到 0.2%。key 被删、被轮换或被重置。**出现即需换 key**，重试无用。也是四种里最容易识别的一种 —— 状态码本身就说清了原因。",
+          "tags": [
+            "401",
+            "auth",
+            "需换key"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "账号池枯竭：402 的连锁反应",
+      "icon": "🧊",
+      "description": "当池子里所有账号同时被判定为额度耗尽，就会出现「池枯竭」。这在中转站场景下特别常见 —— 因为大家用的是**同一个站**、而站方的额度投放节奏是全站统一的。",
+      "items": [
+        {
+          "name": "触发条件：全池额度同时耗尽",
+          "url": "https://github.com/cw11ark/ai-relay-guide",
+          "what": "样本期内账号池规模中位 22 个、最大 27 个。**注意池子规模本身不是原因** —— 高峰期同样是 27 个账号，但 2026-09-24 ~ 10-05 日均枯竭 400+ 次，10-06 之后降到日均 2.9 次，而池规模没变。变量是调用量与额度投放节奏，不是池子大小。",
+          "tags": [
+            "机制",
+            "账号池"
+          ]
+        },
+        {
+          "name": "峰值：单日 1,907 次",
+          "url": "https://github.com/cw11ark/jichang-tuijian-2026",
+          "what": "2026-09-26 记录到单日 1,907 次枯竭/空池事件，9 月全月 11,314 次。同期该站公告多次提到全站额度枯竭与分时段投放。**结论：中转站的可用性上限不由你选哪家决定，而由「大家都在同一时刻把额度用光」决定。**",
+          "tags": [
+            "数据",
+            "峰值",
+            "全站效应"
+          ]
+        },
+        {
+          "name": "自愈路径：分时段投放",
+          "url": "https://github.com/cw11ark/peiqian-jichang",
+          "what": "部分中转站采用「每天固定时刻投放额度」的模式（如北京时间 9:00 / UTC 1:00 投放，用完即止）。这类站的池枯竭**会随投放时点自动恢复**，观察到的空池事件多在投放窗口外集中。排期型用量可以据此错峰。",
+          "tags": [
+            "自愈",
+            "投放",
+            "可规划"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "用量形态与失效的关系",
+      "icon": "📈",
+      "description": "按月汇总同一份日志。注意最后一行：**10 月的下降与我们自己的用量下降同步，不代表站点变稳定。**",
+      "items": [
+        {
+          "name": "2026-08（16 个有事件日）",
+          "url": "https://github.com/cw11ark/saiboyun-jichang",
+          "what": "上游拒绝 598 次，池枯竭 336 次。账号池刚建立时规模小（中位 22），枯竭基数低。",
+          "tags": [
+            "2026-08",
+            "起步期"
+          ]
+        },
+        {
+          "name": "2026-09（29 个有事件日）",
+          "url": "https://github.com/cw11ark/miaolianyun-jichang",
+          "what": "上游拒绝 5,960 次，池枯竭 11,314 次 —— 全部样本期的最高区间。9/24 起进入连续高峰，单日枯竭多次破千。此阶段账号池规模已达 27。",
+          "tags": [
+            "2026-09",
+            "高峰"
+          ]
+        },
+        {
+          "name": "2026-10（13 个有事件日）",
+          "url": "https://github.com/cw11ark/beibei-jichang",
+          "what": "上游拒绝 945 次，池枯竭 2,555 次。**但 10/06 之后单独看只有 20 次** —— 账号池规模不变（27），变化来自调用量下降。**这正是不能拿单方日志给站点打分的理由。**",
+          "tags": [
+            "2026-10",
+            "⚠️边界"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "怎么读这些数字（自用判据）",
+      "icon": "🧭",
+      "description": "把上面的形态翻译成可执行的检查顺序。这几条是从 58 天日志里反推出来的判据，不是通用最佳实践。",
+      "items": [
+        {
+          "name": "① 先看状态码，再决定动作",
+          "url": "https://github.com/charetterat/awesome-pooled-local-llm",
+          "what": "402 → 换额度来源；403 → 查余额/签到状态，可能要人工；500 → 换站或等；401 → 换 key。**四种状态码对应四种完全不同的处置**，混在一起重试是最常见的浪费。",
+          "tags": [
+            "判据",
+            "处置"
+          ]
+        },
+        {
+          "name": "② 换号成功率是站点健康度的下界",
+          "url": "https://github.com/charetterat/awesome-muse-gadgets",
+          "what": "如果换一个账号同一个请求就成功，问题在额度不在站点；**如果连换号都失败，是上游或网络**。这条能立刻区分「我这边的额度用完了」和「站点挂了」，比看首页公告快。",
+          "tags": [
+            "判据",
+            "分流"
+          ]
+        },
+        {
+          "name": "③ 池枯竭是全站现象，不是你独有的",
+          "url": "https://github.com/charetterat/firerouter-opus-guide",
+          "what": "池枯竭意味着**该站所有用户在同一时刻用光了额度**。此时换任何同站账号都没用。可行方向：等投放窗口、换不同架构的站、或把用量挪到非高峰时段。",
+          "tags": [
+            "判据",
+            "全站效应"
+          ]
+        },
+        {
+          "name": "④ 别把重试掩盖的成功当成稳定",
+          "url": "https://github.com/charetterat/awesome-ai-drama-production",
+          "what": "换号逻辑会把单次用户可见的失败变成一次成功。**所以「换号次数」比「用户可见失败次数」大得多**。评估一家站是否真的稳，要看有没有池枯竭、池枯竭多频繁 —— 而不是看你的请求最后有没有成功。",
+          "tags": [
+            "判据",
+            "⚠️重试掩盖"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "相关仓",
+      "icon": "🔗",
+      "description": "同一条线上的其他内容：选站、算账、节点实测。",
+      "items": [
+        {
+          "name": "AI 中转站推荐与评测",
+          "url": "https://github.com/charetterat/awesome-agent-motion-skills",
+          "what": "六家在用渠道的选型、算真实成本、异常处理边界。含在线评测页。",
+          "tags": [
+            "选型",
+            "成本"
+          ]
+        },
+        {
+          "name": "机场推荐（中文）",
+          "url": "https://github.com/charetterat/self-hosted-tts-servers",
+          "what": "四家机场的套餐与节点实测对比（中文线）。",
+          "tags": [
+            "机场"
+          ]
+        },
+        {
+          "name": "赔钱机场测评",
+          "url": "https://github.com/charetterat/clean-room-reimplementations",
+          "what": "83 节点实测，0.1 倍节点额度翻十倍。",
+          "tags": [
+            "机场",
+            "实测"
+          ]
+        }
+      ]
+    }
+  ],
+  "verification_sources": [
+    {
+      "name": "AgentRouter 状态接口（额度投放规则公开可查）",
+      "url": "https://agentrouter.org/api/status",
+      "expected_token": "quota_for_invitee"
+    },
+    {
+      "name": "AgentRouter 文档站",
+      "url": "https://agentrouter.org/docs/index.html",
+      "expected_token": "AgentRouter 接入说明"
+    },
+    {
+      "name": "VS 云状态接口（同类中转站对照）",
+      "url": "https://vsllm.cc/api/status",
+      "expected_token": "quota_per_unit"
+    },
+    {
+      "name": "姊妹仓：AI 中转站推荐与评测",
+      "url": "https://raw.githubusercontent.com/cw11ark/ai-relay-guide/main/README.md",
+      "expected_token": "AgentRouter"
+    },
+    {
+      "name": "主仓：机场推荐对比",
+      "url": "https://raw.githubusercontent.com/cw11ark/jichang-tuijian-2026/main/README.md",
+      "expected_token": "全节点测速，每节点连测"
+    },
+    {
+      "name": "new-api 官方仓库（面板架构与邀请机制）",
+      "url": "https://raw.githubusercontent.com/QuantumNous/new-api/main/README.md",
+      "expected_token": "New API"
+    }
+  ]
+}
