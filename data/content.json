@@ -5,7 +5,7 @@
     "sections[].items[]": "必填：name / url / what；可选：tags[]",
     "verification_sources[]": "必填：name / url / expected_token —— verify_sources.py 会**真的去抓**这些 URL 并断言 token 在正文里"
   },
-  "updated": "2026-10-27",
+  "updated": "2026-10-28",
   "meta": {
     "title": "AI 中转站失效档案",
     "tagline": "中转站是怎么坏的：402 / 403 / 500 的实际形态、占比与自愈路径 —— 58 天自有调用日志的脱敏统计",

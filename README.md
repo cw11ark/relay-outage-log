@@ -1,4 +1,4 @@
-# AI 中转站失效档案 (updated 2026-10-27)
+# AI 中转站失效档案 (updated 2026-10-28)
 
 > 中转站是怎么坏的：402 / 403 / 500 的实际形态、占比与自愈路径 —— 58 天自有调用日志的脱敏统计
 
@@ -77,7 +77,7 @@
 
 - **17** entries across **5** sections.
 - Compiled from public sources; every linked project carries its own license.
-- Last updated: **2026-10-27**.
+- Last updated: **2026-10-28**.
 - Data lives in `data/content.json` — this README is generated, do not edit by hand.
 
 ## License
